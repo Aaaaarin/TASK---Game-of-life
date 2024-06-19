@@ -1,0 +1,128 @@
+import pygame
+import numpy as np
+
+# Initializing Pygame
+pygame.init()
+
+# grid dimensions input
+num_cols = int(input("Enter the number of columns: "))
+num_rows = int(input("Enter the number of rows: "))
+
+def create_random_matrix(n, m):
+    return np.random.randint(2, size=(n, m))
+
+# Constants
+width, height = 1200, 650
+grey = (200, 200, 200)  # Color for the grid lines
+alive_color = (255, 255, 255)  # Color for alive cells
+dead_color = (0, 0, 0)  # Color for dead cells
+
+# Making a screen
+screen = pygame.display.set_mode((width, height))
+
+# Title and icon
+pygame.display.set_caption("Conway's Game of Life")
+icon = pygame.image.load("heart-beat.png")
+pygame.display.set_icon(icon)
+
+# Function to draw the grid
+def draw_grid(grid):
+    for row in range(num_rows):
+        for col in range(num_cols):
+            if grid[row][col] == 1:
+                pygame.draw.rect(screen, alive_color, (col * cell_width, row * cell_height, cell_width, cell_height))
+            else:
+                pygame.draw.rect(screen, dead_color, (col * cell_width, row * cell_height, cell_width, cell_height))
+
+    # Draw grid lines
+    for x in range(0, width, cell_width):
+        pygame.draw.line(screen, grey, (x, 0), (x, height))
+    for y in range(0, height, cell_height):
+        pygame.draw.line(screen, grey, (0, y), (width, y))
+
+def apply_game_rules(grid):
+    new_grid = grid.copy()
+    for row in range(num_rows):
+        for col in range(num_cols):
+            neighbors = count_neighbors(grid, row, col)
+            if grid[row][col] == 1:  # Live cell
+                if neighbors < 2 or neighbors > 3:
+                    new_grid[row][col] = 0  # Underpopulation or overpopulation
+            else:  # Dead cell
+                if neighbors == 3:
+                    new_grid[row][col] = 1  # Reproduction
+    return new_grid
+
+def count_neighbors(grid, row, col):
+    count = 0
+    for i in range(row - 1, row + 2):
+        for j in range(col - 1, col + 2):
+            if i >= 0 and i < num_rows and j >= 0 and j < num_cols and (i != row or j != col) and grid[i][j] == 1:
+                count += 1
+    return count
+
+# Calculate the size of each cell
+cell_width = width // num_cols
+cell_height = height // num_rows
+
+# Initialize the grid
+initialize_randomly = input("Do you want to initialize the grid randomly? (y/n) ").lower() == 'y'
+if initialize_randomly:
+    grid = create_random_matrix(num_rows, num_cols)
+else:
+    grid = np.zeros((num_rows, num_cols), dtype=int)
+    print("Click on the cells you want to be alive, then press the Space key to start the simulation.")
+
+# Game loop
+running = True
+paused = False
+step_mode = False
+clock = pygame.time.Clock()
+fps = 10  # Frame rate
+last_mouse_pos = None
+
+while running:
+    # RGB [0, 255]
+    screen.fill((0, 0, 0))
+
+    # Draw the grid
+    draw_grid(grid)
+
+    # Handle events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                paused = not paused
+            elif event.key == pygame.K_s:
+                step_mode = not step_mode
+            elif event.key == pygame.K_r:
+                grid = create_random_matrix(num_rows, num_cols)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left mouse click
+            pos = pygame.mouse.get_pos()
+            col = pos[0] // cell_width
+            row = pos[1] // cell_height
+            grid[row][col] = 1 - grid[row][col]  # Toggle the cell state
+            last_mouse_pos = (row, col)
+        elif event.type == pygame.MOUSEMOTION and pygame.mouse.get_pressed()[0]:  # Left mouse button held down
+            pos = pygame.mouse.get_pos()
+            col = pos[0] // cell_width
+            row = pos[1] // cell_height
+            if (row, col) != last_mouse_pos:
+                grid[row][col] = 1
+                last_mouse_pos = (row, col)
+
+    # Update the grid
+    if not paused:
+        if step_mode:
+            grid = apply_game_rules(grid)
+        else:
+            grid = apply_game_rules(grid)
+
+    pygame.display.update()
+    clock.tick(fps)  # Limit the frame rate
+
+# Quit Pygame
+pygame.quit()
+
